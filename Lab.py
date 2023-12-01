@@ -1,10 +1,11 @@
 """Tool to plot infer some analysis on experiments"""
-
 from dataclasses import dataclass, field
 from os import listdir
 import matplotlib.pyplot as plt
 from pandas import DataFrame, read_csv, concat
 import mplcyberpunk
+from sklearn.linear_model import LinearRegression
+import numpy as np
 
 
 @dataclass
@@ -39,19 +40,20 @@ class SingleExperiment:
     @property
     def display(self):
         """Display the data"""
+
         print(self.data)
 
     def AddToPlot(self, *args, **kwargs):
         """Add the data to the plot"""
+
         pass
 
     @property
     def process_data(self):
         """Process the data"""
-        # group by first column
+
         df = self.data.groupby(self.data.columns[0]).mean()
         df.index = df.index.values
-        # rename the columns with id_exp
         df.columns = [self.id_exp]
         return df
 
@@ -60,10 +62,8 @@ class SingleExperiment:
 class Experiments:
     """Experiment class with name and list of experiments"""
 
-    name: str = field(default_factory=str)
-    # heating must be a bool set to True  and not shown in the repr
+    # name: str = field(default_factory=str)
     list_exps: list = field(default_factory=list, repr=False)
-    heating: bool = field(default=True, repr=False)
     groupped_data: DataFrame = field(init=True, default_factory=DataFrame, repr=False)
 
     def __post_init__(self):
@@ -72,7 +72,7 @@ class Experiments:
     def group_data(self, *args, **kwargs):
         """Group the data"""
         for exp in self.list_exps:
-            print("added")
+            # print("Processing: ", exp.id_exp)
             self.groupped_data = concat([self.groupped_data, exp.process_data], axis=1)
 
     @property
@@ -81,34 +81,118 @@ class Experiments:
         print(self.groupped_data)
 
     @property
-    def clean_data(self, *args, **kwargs):
+    def clean(self, *args, **kwargs):
         """Clean the data using the CleanData function"""
-        self.groupped_data = CleanData(self.groupped_data, *args, **kwargs)
+        self.groupped_data = clean_data(self.groupped_data, *args, **kwargs)
 
+    @property
     def plot(self, *args, **kwargs):
         """Plot the data"""
-        pass
+
+        plot_data(self.groupped_data, *args, **kwargs)
+
+    def filter(self, words: list):
+        """Filter the data using the words in the list and returns a dataframe with the filtered data"""
+        df = DataFrame(self.groupped_data)
+        for word in words:
+            df = df.filter(regex=word)
+        return df
+
+    @property
+    def flat_out(self):
+        """Flatten the data"""
+        self.groupped_data = baseline_correction(self.groupped_data, degree=1)
 
 
-def CleanData(df: DataFrame, **kwargs):
-    # drop the rows with NaN values
+def baseline_correction(df, degree=1):
+    # Assume df is your DataFrame with temperature as the index
+    # and columns representing different measurements
+
+    corrected_df = df.copy()
+
+    for column in df.columns:
+        # Extract temperature and measurement values
+        temperature = df.index.values.reshape(-1, 1)
+        measurement = df[column].values
+
+        # Fit a polynomial of degree 'degree' to the baseline
+        model = LinearRegression()
+        model.fit(temperature, measurement)
+
+        # Subtract the baseline from the original measurement
+        baseline = model.predict(temperature)
+        corrected_measurement = measurement - baseline
+
+        # Update the DataFrame with the corrected measurement
+        corrected_df[column] = corrected_measurement
+
+    return corrected_df
+
+
+def clean_data(df: DataFrame, **kwargs):
     df = df.dropna(axis=0, how="any")
-
-    # if in args and kwargs there is a range_T and range_Q use them otherwise use the default
-    # if "range_T" in kwargs:
-    #    range_T = kwargs["range_T"]
-    # else:
-    #    range_T = (df.index.min(), df.index.max())
-    # if "range_Q" in kwargs:
-    #    range_Q = kwargs["range_Q"]
-    # else:
-    #    range_Q = (df.values.min(), df.values.max())
-
-    ## drop the rows with temperature out of the range
-    # df = df.loc[(df.index >= range_T[0]) & (df.index <= range_T[1])]
-    ## drop the columns with heat flow out of the range
-    # df = df.loc[:, (df.values >= range_Q[0]) & (df.values <= range_Q[1])]
     return df
+
+
+CYBERPUNK = True
+
+
+def plot_data(df: DataFrame, *args, **kwargs):
+    # if make it cyberpunk is in kwargs use it otherwise use the default
+
+    # use the global variable CYBERPUNK to decide if make it cyberpunk or not
+
+    if CYBERPUNK:
+        plt.style.use("cyberpunk")
+
+    # take the mean and the standard deviation of the data
+    mean = df.mean(axis=1)
+    std = df.std(axis=1)
+
+    # figure must be contained in the range_T and range_Q
+    # range_T = (df.index.min(), df.index.max())
+    # range_Q = (df.values.min(), df.values.max())
+    #
+    ## set the range of the plot
+    # plt.xlim(range_T)
+    # plt.ylim(range_Q)
+
+    # plot the mean and the standard deviation
+    startin_point = kwargs.get("starting_point", 0)
+    plt.plot(mean + startin_point, linewidth=1)
+
+    plt.fill_between(
+        mean.index, startin_point + mean - std, startin_point + mean + std, alpha=0.2
+    )
+
+    # plot the data with a very thin line and same color as above plot
+    for column in df.columns:
+        plt.plot(df[column] + startin_point, linewidth=0.4, label=column)
+
+    # add the legend
+    plt.legend()
+    # add the labels
+    plt.xlabel("Temperature")
+    plt.ylabel("Heat Flow")
+    plt.title("Heating vs Temperature")
+
+    # add the cyberpunk style
+    # mplcyberpunk.add_glow_effects()
+
+    # show the plot
+
+
+# dataA = all.filter(regex="heating").filter(regex="2perc").filter(regex="A")
+# dataB = all.filter(regex="heating").filter(regex="2perc").filter(regex="B")
+## plot A and B with a very thin line and same color of the corresponding plot
+# plt.plot(dataA, color="C0", linewidth=0.1)
+# plt.plot(dataB, color="C0", linewidth=0.1)
+
+
+def collect_files(location: str, extension: str):
+    """Collect all the files in a directory"""
+    files = listdir(location)
+    return [file for file in files if file.endswith(extension)]
 
 
 #
