@@ -138,18 +138,22 @@ def plot_data(df: DataFrame, *args, **kwargs):
     mean = df.mean(axis=1)
     std = df.std(axis=1)
     startin_point = kwargs.get("starting_point", 0)
-    plt.plot(mean + startin_point, linewidth=1)
+    plt.plot(mean + startin_point, linewidth=1, label=kwargs.get("label", "Mean"))
 
     plt.fill_between(
         mean.index, startin_point + mean - std, startin_point + mean + std, alpha=0.2
     )
-    for column in df.columns:
-        plt.plot(df[column] + startin_point, linewidth=0.4, label=column)
 
-    plt.legend()
-    plt.xlabel("Temperature")
-    plt.ylabel("Heat Flow")
-    plt.title("Heating vs Temperature")
+    if kwargs.get("single_data", False):
+        for column in df.columns:
+            plt.plot(
+                df[column] + startin_point, linewidth=0.4, label=column, color="gray"
+            )
+
+    plt.xlabel("Temperature (°C)")
+    plt.ylabel("Heat Flow Endo Up (mW)")
+    plt.grid(True)
+    plt.title(kwargs.get("title", "Plot"))
 
 
 def collect_files(location: str, extension: str):
