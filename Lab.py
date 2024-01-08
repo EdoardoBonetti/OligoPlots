@@ -1,110 +1,29 @@
-"""Tool to plot infer some analysis on experiments"""
+"""Tool to plot infer some analysis on DSC thermograms and TPA"""
+
 from dataclasses import dataclass, field
-from os import listdir
-import matplotlib.pyplot as plt
 from pandas import DataFrame, read_csv, concat
-import mplcyberpunk
+from os import listdir
+from icecream import ic
+from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
-import numpy as np
 
 
-# @dataclass
-# class Material:
-#    """Material class with name"""
-#
-#    name: str = ""
+def collect_files(location: str, extension: str):
+    """Collect all the files in a directory"""
+    filenames = listdir(location)
+    return [file for file in filenames if file.endswith(extension)]
 
 
-@dataclass
-class SingleExperiment:
-    id_exp: str = ""
-    location: str = field(repr=False, default_factory=str)
-    data: DataFrame = field(repr=False, init=False, default_factory=DataFrame)
-
-    def __post_init__(self):
-        self.data = self.ReadData()
-
-    def ReadData(self, *args, **kwargs):
-        """Read the data from the file"""
-        if self.id_exp.endswith(".txt"):
-            return read_csv(
-                self.location + "/" + self.id_exp, sep="\t", header=0, skiprows=2
-            )
-        elif self.id_exp.endswith(".csv"):
-            return read_csv(
-                self.location + "/" + self.id_exp, sep=",", header=0, skiprows=2
-            )
-        else:
-            raise ValueError("File not supported")
-
-    @property
-    def display(self):
-        """Display the data"""
-
-        print(self.data)
-
-    def AddToPlot(self, *args, **kwargs):
-        """Add the data to the plot"""
-
-        pass
-
-    @property
-    def process_data(self):
-        """Process the data"""
-
-        df = self.data.groupby(self.data.columns[0]).mean()
-        df.index = df.index.values
-        df.columns = [self.id_exp]
-        return df
+def read_data(id_exp: str, location: str):
+    """Read the data from the file"""
+    return read_csv(
+        location + "/" + id_exp, sep="\t", header=0, skiprows=0,
+        # names=["Temperature", "Heat Flow"]
+        names=["Temperature", id_exp]
+    )
 
 
-@dataclass
-class Experiments:
-    """Experiment class with name and list of experiments"""
-
-    # name: str = field(default_factory=str)
-    list_exps: list = field(default_factory=list, repr=False)
-    groupped_data: DataFrame = field(init=True, default_factory=DataFrame, repr=False)
-
-    def __post_init__(self):
-        self.group_data()
-
-    def group_data(self, *args, **kwargs):
-        """Group the data"""
-        for exp in self.list_exps:
-            # print("Processing: ", exp.id_exp)
-            self.groupped_data = concat([self.groupped_data, exp.process_data], axis=1)
-
-    @property
-    def display(self, *args, **kwargs):
-        """Display the data"""
-        print(self.groupped_data)
-
-    @property
-    def clean(self, *args, **kwargs):
-        """Clean the data using the CleanData function"""
-        self.groupped_data = clean_data(self.groupped_data, *args, **kwargs)
-
-    @property
-    def plot(self, *args, **kwargs):
-        """Plot the data"""
-
-        plot_data(self.groupped_data, *args, **kwargs)
-
-    def filter(self, words: list):
-        """Filter the data using the words in the list and returns a dataframe with the filtered data"""
-        df = DataFrame(self.groupped_data)
-        for word in words:
-            df = df.filter(regex=word)
-        return df
-
-    @property
-    def flat_out(self):
-        """Flatten the data"""
-        self.groupped_data = baseline_correction(self.groupped_data, degree=1)
-
-
-def baseline_correction(df, degree=1):
+def baseline_correction(df):
     # Assume df is your DataFrame with temperature as the index
     # and columns representing different measurements
 
@@ -129,34 +48,91 @@ def baseline_correction(df, degree=1):
     return corrected_df
 
 
-def clean_data(df: DataFrame, **kwargs):
-    df = df.dropna(axis=0, how="any")
-    return df
+def smooth(df, window):
+    return df.rolling(window=window, center=True).mean()
 
 
-def plot_data(df: DataFrame, *args, **kwargs):
+@dataclass
+class Measurment:
+    """Measurment class with id, location and data"""
+
+    id_exp: str = ""
+    location: str = field(repr=True, default_factory=str)
+    data: DataFrame = field(repr=True, init=False, default_factory=DataFrame)
+
+    def __post_init__(self):
+        self.data = read_data(self.id_exp, self.location)
+        self.clean_data
+
+    @property
+    def clean_data(self):
+        """Clean the data"""
+        t_min = 25
+        t_max = 85
+        self.data = self.data[self.data["Temperature"] >= t_min]
+        self.data = self.data[self.data["Temperature"] <= t_max]
+        self.data = self.data.dropna()
+        self.data = self.data.groupby(self.data.columns[0])
+        self.data = self.data.mean()
+        self.data.columns = [self.id_exp]
+        self.data = baseline_correction(self.data)
+        # self.data = smooth(self.data, 4)
+
+
+def Experiment(location: str, title: str):
+    # location = "DSC/4perc/cooling"
+
+    list_ids = collect_files(location, extension=".txt")
+    measm = [Measurment(i, location) for i in list_ids]
+
+    df = DataFrame()
+    for m in measm:
+        df = concat([df, m.data], axis=1)
+        # plt.plot(m.data, color="black", linewidth=0.1)
+        # print(m.data)
+
+    # plt.show()
+    print(df)
+    # eliminate nans
+    df = df.dropna()
+    # df.plot(color="black", linewidth=0.1)
     mean = df.mean(axis=1)
+    plt.plot(mean, color="red", linewidth=1)
     std = df.std(axis=1)
-    startin_point = kwargs.get("starting_point", 0)
-    plt.plot(mean + startin_point, linewidth=1, label=kwargs.get("label", "Mean"))
-
-    plt.fill_between(
-        mean.index, startin_point + mean - std, startin_point + mean + std, alpha=0.2
-    )
-
-    if kwargs.get("single_data", False):
-        for column in df.columns:
-            plt.plot(
-                df[column] + startin_point, linewidth=0.4, label=column, color="gray"
-            )
-
-    plt.xlabel("Temperature (°C)")
-    plt.ylabel("Heat Flow Endo Up (mW)")
-    plt.grid(True)
-    plt.title(kwargs.get("title", "Plot"))
+    # plt.plot(mean + std, color="blue", linewidth=1)
+    # plt.plot(mean - std, color="blue", linewidth=1)
+    plt.fill_between(mean.index, mean + std, mean -
+                     std, color="blue", alpha=0.2)
+    plt.legend(["mean", "std"])
+    title.replace("\",  )
+    plt.title(title)
+    # plt.show()
+    # save plot in same location
+    title.replace(" ", "_").replace("%", "perc")
+    plt.grid()
+    plt.savefig(location + "/" + title+".png", dpi=300)
+    plt.close()
 
 
-def collect_files(location: str, extension: str):
-    """Collect all the files in a directory"""
-    files = listdir(location)
-    return [file for file in files if file.endswith(extension)]
+def main():
+    """Main function"""
+    Experiment("DSC/2perc/cooling",
+               "DSC thermogram oleogel RBX\RSO cooling 2%")
+    Experiment("DSC/2perc/heating",
+               "DSC thermogram oleogel RBX\RSO heating 2%")
+    Experiment("DSC/4perc/cooling",
+               "DSC thermogram oleogel RBX\RSO cooling 4%")
+    Experiment("DSC/4perc/heating",
+               "DSC thermogram oleogel RBX\RSO heating 4%")
+    Experiment("DSC/6perc/cooling",
+               "DSC thermogram oleogel RBX\RSO cooling 6%")
+    Experiment("DSC/6perc/heating",
+               "DSC thermogram oleogel RBX\RSO heating 6%")
+    Experiment("DSC/8perc/cooling",
+               "DSC thermogram oleogel RBX\RSO cooling 8%")
+    Experiment("DSC/8perc/heating",
+               "DSC thermogram oleogel RBX\RSO heating 8%")
+
+
+if __name__ == "__main__":
+    main()
