@@ -4,6 +4,8 @@ from os import listdir
 import matplotlib.pyplot as plt
 from pandas import DataFrame, read_csv, concat
 from sklearn.linear_model import LinearRegression
+from scipy.stats import f_oneway
+
 
 from scipy.signal import savgol_filter
 import numpy as np
@@ -17,7 +19,7 @@ import abc
 
 # Global variables
 # SHOW_PLOTS = True
-TESTING_MODE = False
+TESTING_MODE = True
 
 
 @dataclass
@@ -147,7 +149,7 @@ class MultipleDSC(Multiple):
             msmt.clean(**kwargs)
         # concatenate all the data using the temperature as index
         self.data = concat([msmt.data for msmt in self.single_msmt],
-                           axis=1, join='inner')
+                           axis=1)  # , join='inner')
         # remove all rows with NaN
         self.data = self.data.dropna()
 
@@ -228,10 +230,16 @@ def smooth(df, **kwargs):
         new_df[column] = savgol_filter(new_df[column], 51, 3)
     return new_df
 
+# the anova function takes as args multiples and returns the p-value of the anova test
 
-def main():
-    """Main implementation to quickly test the code"""
 
+def anova(all_data):
+    # all data contains a list of dataframes, we need to comapare row by row if the index is the same
+    # if not we need to interpolate the data
+
+
+
+def test_dsc():
     # test single file
 
     dsc = DSC(
@@ -246,9 +254,14 @@ def main():
     print(dsc.data)
     # dsc.plot()
 
+
+def test_multiple_dsc_cooling():
+    kwargs = {'temp_min': 0, 'temp_max': 85,
+              "p": 0.99, "lam": 10**(5), "niter": 100}
+
     # test multiple files
     multiple_dsc = MultipleDSC("DSC/LARD/cooling/lard")
-    print(multiple_dsc.data)
+    # print(multiple_dsc.data)
     multiple_dsc.clean(**kwargs)
     print(multiple_dsc.data)
 
@@ -262,6 +275,58 @@ def main():
 
     plt.legend()
     plt.show()
+
+
+def test_multiple_dsc_rbxreo_cooling():
+    kwargs = {'temp_min': 10, 'temp_max': 85,
+              "p": 0.99, "lam": 10**(12), "niter": 200}
+
+    # test multiple files
+    multiple_2 = MultipleDSC("DSC/RBXRSO/cooling/2perc")
+    multiple_4 = MultipleDSC("DSC/RBXRSO/cooling/4perc")
+    multiple_6 = MultipleDSC("DSC/RBXRSO/cooling/6perc")
+    multiple_8 = MultipleDSC("DSC/RBXRSO/cooling/8perc")
+    # print(multiple_dsc.data)
+    multiple = [multiple_2, multiple_4, multiple_6, multiple_8]
+
+    all_data = []
+    for msmt in multiple:
+        print(msmt.data)
+        msmt.clean(**kwargs)
+        print(msmt.data)
+        all_data.append(msmt.data)
+
+        kwargs_plot = {"title": "DSC thermogram Pork"}
+
+        msmt.prepare_plot(**kwargs_plot)
+        # msmt.plot_mean(label="mean")
+        # msmt.plot_std(label="std")
+        msmt.plot_individuals()
+        plt.legend()
+        plt.show()
+
+    anova(all_data)
+
+    # multiple_dsc.clean(**kwargs)
+    # print(multiple_dsc.data)
+
+#    kwargs_plot = {"title": "DSC thermogram Pork"}
+#
+#    multiple_2.prepare_plot(**kwargs_plot)
+#    # plot the data
+#    multiple_2.plot_mean(label="mean")
+#    multiple_2.plot_std(label="std")
+#    multiple_2.plot_individuals()
+#
+#    plt.legend()
+#    plt.show()
+
+
+def main():
+    """Main implementation to quickly test the code"""
+
+    # test_dsc()
+    test_multiple_dsc_rbxreo_cooling()
 
 
 if __name__ == "__main__":
