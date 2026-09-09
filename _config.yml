@@ -1,0 +1,18 @@
+title: OligoPlots
+author: Edoardo Bonetti
+
+execute:
+  execute_notebooks: "off"
+
+html:
+  use_repository_button: true
+  use_issues_button: true
+
+repository:
+  url: https://github.com/EdoardoBonetti/OligoPlots
+  branch: main
+
+exclude_patterns:
+  - _build
+  - "**.ipynb_checkpoints"
+  - deprecatedfiles

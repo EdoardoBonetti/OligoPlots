@@ -1,0 +1,33 @@
+format: jb-book
+root: intro
+parts:
+  - caption: DSC
+    chapters:
+      - file: DSC/LARD/heating/analisi
+        title: Lard — Heating
+      - file: DSC/LARD/cooling/analisi
+        title: Lard — Cooling
+      - file: DSC/RBXRSO/heating/analisi
+        title: RBX/RSO — Heating
+      - file: DSC/RBXRSO/cooling/analisi
+        title: RBX/RSO — Cooling
+  - caption: TPA
+    chapters:
+      - file: TPA/LARD/analisi
+        title: Lard
+      - file: TPA/RSO/analisi
+        title: RSO
+      - file: TPA/SAUSAGES/LARD/analisi
+        title: Sausages — Lard
+      - file: TPA/SAUSAGES/MARGARINE/analisi
+        title: Sausages — Margarine
+      - file: TPA/SAUSAGES/OIL/analisi
+        title: Sausages — Oil
+      - file: TPA/SAUSAGES/RSO_FREEZ/analisi
+        title: Sausages — RSO (Frozen)
+      - file: TPA/SAUSAGES/RSO_LIQUID/analisi
+        title: Sausages — RSO (Liquid)
+  - caption: Rheology
+    chapters:
+      - file: REHO/analisi
+        title: REHO
