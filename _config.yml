@@ -7,6 +7,8 @@ execute:
 html:
   use_repository_button: true
   use_issues_button: true
+  announcement: |
+    🌐 <a href="#" onclick="var l=window.location;var host=l.host.replace(/\./g,'-')+'.translate.goog';var qs=l.search?l.search+'&':'?';window.open(l.protocol+'//'+host+l.pathname+qs+'_x_tr_sl=en&_x_tr_tl=it&_x_tr_hl=it&_x_tr_pto=wapp','_blank');return false;" style="color:#fff;text-decoration:underline;cursor:pointer;">Traduci questa pagina in italiano 🇮🇹</a>
 
 repository:
   url: https://github.com/EdoardoBonetti/OligoPlots
