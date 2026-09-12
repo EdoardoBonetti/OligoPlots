@@ -3,6 +3,8 @@ root: intro
 parts:
   - caption: DSC
     chapters:
+      - file: DSC/index
+        title: Overview
       - file: DSC/LARD/heating/analisi
         title: Lard — Heating
       - file: DSC/LARD/cooling/analisi
@@ -13,10 +15,14 @@ parts:
         title: RBX/RSO — Cooling
   - caption: TPA
     chapters:
+      - file: TPA/index
+        title: Overview
       - file: TPA/LARD/analisi
         title: Lard
       - file: TPA/RSO/analisi
         title: RSO
+      - file: TPA/SAUSAGES/index
+        title: Sausages — Overview
       - file: TPA/SAUSAGES/LARD/analisi
         title: Sausages — Lard
       - file: TPA/SAUSAGES/MARGARINE/analisi
@@ -29,5 +35,7 @@ parts:
         title: Sausages — RSO (Liquid)
   - caption: Rheology
     chapters:
+      - file: REHO/index
+        title: Overview
       - file: REHO/analisi
         title: REHO
